@@ -12,6 +12,45 @@ unordered_map<int, Vertex> points;// = { {0, Vertex(Vector2f(50.f, 50.f))}, {1, 
 int p_size = 0;
 unordered_map<int, Vector2i> edges;// = { {0, Vector2i(0, 1)}, {1, Vector2i(0, 2)}, {2, Vector2i(2, 1)} };
 int e_size = 0;
+int normal_edge_length = 100;
+
+
+int update_points() {
+	for (auto it = edges.begin(); it != edges.end(); ++it) {
+		int key = it->first;
+		Vector2i edge = it->second;
+
+		if (edge.y == -1) continue;
+
+		Vector2f point1 = points[edge.x].position;
+		Vector2f point2 = points[edge.y].position;
+
+		Vector2f dfrn = point1 - point2;
+
+		float length = sqrt(dfrn.x * dfrn.x + dfrn.y * dfrn.y);
+
+		if (length - 1> normal_edge_length) {
+			Vector2f dir = dfrn / (normal_edge_length / length) / 250.f;
+
+			point1 -= dir;
+			point2 += dir;
+
+			points[edge.x].position = point1;
+			points[edge.y].position = point2;
+		}
+		else if (length + 1 < normal_edge_length) {
+			Vector2f dir = dfrn / (normal_edge_length / length) / 100.f;
+
+			point1 += dir;
+			point2 -= dir;
+
+			points[edge.x].position = point1;
+			points[edge.y].position = point2;
+		}
+	}
+	return 0;
+}
+
 
 void delete_edge(int edge) {
 	edges.erase(edge);
@@ -39,8 +78,12 @@ int main()
 	Vector2i mps;
 	bool mbl = false, mblc = true;
 	bool mbr = false, mbrc = true;
+	bool mbm = false, mbmc = true;
 	bool dlt = false;
 	bool spc = false;
+	bool ctr = false;
+
+	int mbm_select = -1;
 
 	bool edge_creating = false;
 	int vertex_nearby = -1;
@@ -56,8 +99,17 @@ int main()
 
 			mbl = Mouse::isButtonPressed(Mouse::Button::Left);
 			mbr = Mouse::isButtonPressed(Mouse::Button::Right);
+			mbm = Mouse::isButtonPressed(Mouse::Button::Middle);
 			dlt = Keyboard::isKeyPressed(Keyboard::Delete);
 			spc = Keyboard::isKeyPressed(Keyboard::Space);
+			ctr = Keyboard::isKeyPressed(Keyboard::LControl);
+
+		}
+
+		update_points();
+		if (ctr && dlt) {
+			points.clear();
+			edges.clear();
 		}
 
 		window.clear(Color(128, 128, 128, 255));
@@ -65,7 +117,7 @@ int main()
 		vertex_nearby = -1;
 		for (auto it = points.begin(); it != points.end(); ) {
 			int key = it->first;
-			const Vertex& point = it->second;
+			Vertex& point = it->second;
 			Vector2f pps = point.position;
 
 			CircleShape circle;
@@ -80,6 +132,10 @@ int main()
 					delete_point(key);
 					it = points.erase(it);
 					continue;
+				}
+
+				if (mbm) {
+					mbm_select = key;
 				}
 
 				vertex_nearby = key;
@@ -155,6 +211,13 @@ int main()
 
 			window.draw(line, 2, Lines);
 			++it;
+		}
+
+		if (mbm_select != -1 && mbm) {
+			points[mbm_select].position = Vector2f(mps);
+		}
+		else {
+			mbm_select = -1;
 		}
 
 		if (mbl) {
